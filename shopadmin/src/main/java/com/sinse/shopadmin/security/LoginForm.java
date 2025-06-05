@@ -123,6 +123,4 @@ public class LoginForm extends Page {
 
 	}
 
-	public static void main(String[] args) {
-	}
 }

@@ -6,7 +6,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.lang.reflect.Member;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -16,9 +17,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-import org.w3c.dom.css.CSSPageRule;
-
-import com.mysql.cj.x.protobuf.MysqlxCrud.Order;
 import com.sinse.shopadmin.common.config.Config;
 import com.sinse.shopadmin.config.view.ConfigPage;
 import com.sinse.shopadmin.cs.view.CustomerPage;
@@ -48,15 +46,13 @@ public class AppMain extends JFrame {
 
 	// 모든 페이지를 담게될 배열
 	Page[] pages;
-	
-	LoginForm loginform;
 
 	public AppMain() {
 		p_north = new JPanel();
 		p_west = new JPanel();
 		p_container = new JPanel();
 
-		la_user = new JLabel("Shy");
+		la_user = new JLabel();
 
 		la_product = new JLabel("상품관리");
 		la_order = new JLabel("주문관리");
@@ -129,11 +125,24 @@ public class AppMain extends JFrame {
 				showPage(Config.CONFIG_PAGE);
 			}
 		});
-
+		
+		this.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				//데이터베이스 접속 끊기
+				if(conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					}
+				}
+				System.exit(0);//프로세스 종료
+			}
+		});
+		
 		createPage();
 		showPage(-1);//최초에는 로그인 폼은 기본으로 떠있게 처리
 		
-		setDefaultCloseOperation(EXIT_ON_CLOSE); // db연동후엔 제거
 		setBounds(200, 100, Config.ADMINMAIN_WIDTH, Config.ADMINMAIN_HEIGHT);
 		setVisible(true);
 	}
@@ -158,15 +167,6 @@ public class AppMain extends JFrame {
 
 	}
 
-	/*// 로그인 햇는지 체크하여, 로그인 한 경우만 해당 페이지 보여주기
-	public void loginCheck() {
-		if (admin == null) {
-			JOptionPane.showMessageDialog(this, "로그인이 필요한 서비스입니다.");
-		} else {
-			// 원래 보여주려던 페이지 보여주기
-		}
-	}*/
-
 	// 쇼핑몰에 사용할 모든 페이지 생성 및 부착
 	public void createPage() {
 		pages = new Page[8];
@@ -188,7 +188,7 @@ public class AppMain extends JFrame {
 	//부착된 페이지들을 대상으로 어떤 페이지를 보여줄지를 결정하는 메서드
 	public void showPage(int target) {
 		//로그인 체크
-		if (admin == null && target != -1 && target != Config.JOIN_PAGE) {
+		if (admin == null && target != -1 && target != Config.JOIN_PAGE && target != Config.JOIN_PAGE) {
 			JOptionPane.showMessageDialog(this, "로그인이 필요한 서비스입니다.");
 			pages[Config.LOGIN_PAGE].setVisible(true);
 			return;
@@ -197,7 +197,6 @@ public class AppMain extends JFrame {
 			pages[i].setVisible(i == target);
 		}
 	}
-
 	public static void main(String[] args) {
 		new AppMain();
 	}

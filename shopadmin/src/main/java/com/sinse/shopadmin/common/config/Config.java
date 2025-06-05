@@ -1,6 +1,11 @@
 package com.sinse.shopadmin.common.config;
 
 public class Config {
+	
+    public static final String url = "jdbc:mysql://localhost:3306/shop";
+    public static final String id = "shop";
+    public static final String password = "1234";
+    
 	/*-------------------------------------
 	 각 페이지 정의
 	 --------------------------------------*/
