@@ -11,16 +11,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 
 import com.sinse.shopadmin.AppMain;
+import com.sinse.shopadmin.common.config.Config;
 import com.sinse.shopadmin.security.model.Admin;
+import com.sinse.shopadmin.view.Page;
 
-public class LoginForm extends JFrame {
+public class LoginForm extends Page {
 	JLabel la_id;
 	JLabel la_pwd;
 	JTextField t_id;
@@ -28,9 +29,8 @@ public class LoginForm extends JFrame {
 	JButton bt_login;
 	JButton bt_join;
 
-	Connection conn;
-
-	public LoginForm() {
+	public LoginForm(AppMain app) {
+		super(app);
 		la_id = new JLabel("ID");
 		la_pwd = new JLabel("Password");
 		t_id = new JTextField();
@@ -54,35 +54,19 @@ public class LoginForm extends JFrame {
 		add(bt_login);
 		add(bt_join);
 
-		connect();
-
 		bt_login.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				loginCheck();
 			}
 		});
-		setSize(270, 145);
-		setVisible(true);
-	}
-
-	public void connect() {
-		String url = "jdbc:mysql://localhost:3306/shop";
-		String user = "shop";
-		String pass = "1234";
-		try {
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			conn = DriverManager.getConnection(url, user, pass);
-			if (conn != null) {
-				this.setTitle("접속 중");
-			} else {
-				this.setTitle("접속 에러");
+		
+		bt_join.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				app.showPage(Config.JOIN_PAGE);
 			}
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-
+		});
+		
+		this.setPreferredSize(new Dimension(270, 145));
 	}
 
 	public void loginCheck() {
@@ -94,7 +78,7 @@ public class LoginForm extends JFrame {
 		ResultSet rs = null;
 
 		try {
-			pstmt = conn.prepareStatement(sql);
+			pstmt = app.conn.prepareStatement(sql);
 			// 쿼리문을 수행하기 위해, 바인드 변수를 먼저 지정해야 한다..
 			pstmt.setString(1, id);
 			pstmt.setString(2, pwd);
@@ -102,16 +86,18 @@ public class LoginForm extends JFrame {
 
 			if (rs.next()) { // 한칸 전진후 true가 반환된다면.. 일치하는 데이터가 있따는 것이고, 일치하는 데이터가 있다는 것은 로그인 성공
 				JOptionPane.showMessageDialog(this, "로그인 성공");
-
+				
 				// 로그인 성공한 사람의 정보 담기!!!
 				Admin admin = new Admin(); //empty 상태의 객체 생성
 				admin.setAdmin_id(rs.getInt("admin_id"));
 				admin.setId(rs.getString("id"));
 				admin.setPwd(rs.getString("pwd"));
 				admin.setName(rs.getString("name"));
+				//AppMain이 보유하고 있는 Admin 모델 객체의 현재 null값을 위에서 생성한 admin 대체
+				app.admin = admin;
 				
-				AppMain appMain = new AppMain(conn, admin);
-				this.setVisible(false);
+				//현재 유저가 보고 잇는 페이지를  MainPage로 교체.
+				app.showPage(Config.MAIN_PAGE);
 			} else {
 				JOptionPane.showMessageDialog(this, "로그인 실패");
 			}
@@ -138,6 +124,5 @@ public class LoginForm extends JFrame {
 	}
 
 	public static void main(String[] args) {
-		new LoginForm();
 	}
 }

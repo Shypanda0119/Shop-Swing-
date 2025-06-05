@@ -1,0 +1,13 @@
+package com.sinse.shopadmin.main.view;
+
+import java.awt.Color;
+
+import com.sinse.shopadmin.AppMain;
+import com.sinse.shopadmin.view.Page;
+
+public class MainPage extends Page{
+	public MainPage(AppMain app) {
+		super(app);
+		setBackground(Color.yellow);
+	}
+}
