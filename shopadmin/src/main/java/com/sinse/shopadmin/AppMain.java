@@ -42,7 +42,7 @@ public class AppMain extends JFrame {
 	JLabel la_config;
 
 	public Connection conn;
-	public Admin admin;
+	public Admin admin = new Admin(); // 추후제거 (테스트를 위해 로그인 해놓기)
 
 	// 모든 페이지를 담게될 배열
 	Page[] pages;
