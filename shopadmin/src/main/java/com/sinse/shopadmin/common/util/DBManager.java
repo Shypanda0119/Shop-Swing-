@@ -19,7 +19,8 @@ public class DBManager {
 		try {
 
 			// 1) 드라이버 로드
-			Class.forName("com.mysql.cj.jdbc.Driver");;
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			;
 
 			// 2) 접속
 			conn = DriverManager.getConnection(Config.url, Config.id, Config.password);
@@ -41,6 +42,17 @@ public class DBManager {
 
 	public Connection getConnection() {
 		return conn;
+	}
+	
+	//데이터베이스 관련된 자원을 해체하는 메서드
+	public void release(Connection conn) {
+		if(conn != null) {
+			try {
+				conn.close();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			}
+		}
 	}
 
 	public void release(PreparedStatement pstmt) { // DML
@@ -74,4 +86,5 @@ public class DBManager {
 	public void release(Connection conn, PreparedStatement pstmt, ResultSet rs) {
 
 	}
+
 }

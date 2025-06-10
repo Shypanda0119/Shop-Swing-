@@ -18,6 +18,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import com.sinse.shopadmin.common.config.Config;
+import com.sinse.shopadmin.common.util.DBManager;
 import com.sinse.shopadmin.config.view.ConfigPage;
 import com.sinse.shopadmin.cs.view.CustomerPage;
 import com.sinse.shopadmin.main.view.MainPage;
@@ -41,7 +42,8 @@ public class AppMain extends JFrame {
 	JLabel la_cs;
 	JLabel la_config;
 
-	public Connection conn;
+	DBManager dbManager = DBManager.getInstance();
+	Connection conn;
 	public Admin admin = new Admin(); // 추후제거 (테스트를 위해 로그인 해놓기)
 
 	// 모든 페이지를 담게될 배열
@@ -58,7 +60,7 @@ public class AppMain extends JFrame {
 		la_order = new JLabel("주문관리");
 		la_member = new JLabel("회원관리");
 		la_cs = new JLabel("고객센터");
-		la_config = new JLabel("환경설정");
+		la_config = new JLabel("쇼핑몰관리");
 
 		// 스타일
 		p_north.setPreferredSize(new Dimension(Config.UTIL_WIDTH, Config.UTIL_HEIGHT));
@@ -66,10 +68,11 @@ public class AppMain extends JFrame {
 
 		p_west.setPreferredSize(new Dimension(Config.SIDE_WIDTH, Config.SIDE_HEIGHT));
 		p_west.setBackground(Color.yellow);
-		
-		p_container.setPreferredSize(new Dimension(Config.ADMINMAIN_WIDTH-Config.SIDE_WIDTH, Config.ADMINMAIN_HEIGHT-Config.UTIL_HEIGHT));
+
+		p_container.setPreferredSize(new Dimension(Config.ADMINMAIN_WIDTH - Config.SIDE_WIDTH,
+				Config.ADMINMAIN_HEIGHT - Config.UTIL_HEIGHT));
 		p_container.setBackground(Color.pink);
-		
+
 		Dimension d = new Dimension(185, 100);
 		la_product.setPreferredSize(d);
 		la_order.setPreferredSize(d);
@@ -93,7 +96,7 @@ public class AppMain extends JFrame {
 
 		add(p_north, BorderLayout.NORTH);
 		add(p_west, BorderLayout.WEST);
-		
+
 		add(p_container);
 		// 데이터베이스 접속해놓기
 		connect();
@@ -125,46 +128,25 @@ public class AppMain extends JFrame {
 				showPage(Config.CONFIG_PAGE);
 			}
 		});
-		
+
 		this.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
-				//데이터베이스 접속 끊기
-				if(conn != null) {
-					try {
-						conn.close();
-					} catch (SQLException e1) {
-						e1.printStackTrace();
-					}
-				}
-				System.exit(0);//프로세스 종료
+				// 데이터베이스 접속 끊기
+				dbManager.release(conn);
+				System.exit(0);// 프로세스 종료
 			}
 		});
-		
+
 		createPage();
-		showPage(-1);//최초에는 로그인 폼은 기본으로 떠있게 처리
-		
+		showPage(-1);// 최초에는 로그인 폼은 기본으로 떠있게 처리
+
 		setBounds(200, 100, Config.ADMINMAIN_WIDTH, Config.ADMINMAIN_HEIGHT);
 		setVisible(true);
 	}
 
 	public void connect() {
-		String url = "jdbc:mysql://localhost:3306/shop";
-		String user = "shop";
-		String pass = "1234";
-		try {
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			conn = DriverManager.getConnection(url, user, pass);
-			if (conn != null) {
-				this.setTitle("MySQL 접속 완료");
-			} else {
-				this.setTitle("MySQL 접속 불가");
-			}
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-
+		conn = dbManager.getConnection();
+		
 	}
 
 	// 쇼핑몰에 사용할 모든 페이지 생성 및 부착
@@ -185,18 +167,19 @@ public class AppMain extends JFrame {
 		}
 	}
 
-	//부착된 페이지들을 대상으로 어떤 페이지를 보여줄지를 결정하는 메서드
+	// 부착된 페이지들을 대상으로 어떤 페이지를 보여줄지를 결정하는 메서드
 	public void showPage(int target) {
-		//로그인 체크
+		// 로그인 체크
 		if (admin == null && target != -1 && target != Config.JOIN_PAGE && target != Config.JOIN_PAGE) {
 			JOptionPane.showMessageDialog(this, "로그인이 필요한 서비스입니다.");
 			pages[Config.LOGIN_PAGE].setVisible(true);
 			return;
-		} 
+		}
 		for (int i = 0; i < pages.length; i++) {
 			pages[i].setVisible(i == target);
 		}
 	}
+
 	public static void main(String[] args) {
 		new AppMain();
 	}

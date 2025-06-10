@@ -2,20 +2,33 @@ package com.sinse.shopadmin.product.view;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.Buffer;
 import java.util.List;
+import java.util.Vector;
 
+import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import com.sinse.shopadmin.AppMain;
 import com.sinse.shopadmin.product.model.SubCategory;
 import com.sinse.shopadmin.product.model.TopCategory;
+import com.sinse.shopadmin.product.repository.ColorDAO;
+import com.sinse.shopadmin.product.repository.SizeDAO;
 import com.sinse.shopadmin.product.repository.SubCategoryDAO;
 import com.sinse.shopadmin.product.repository.TopCategoryDAO;
 import com.sinse.shopadmin.view.Page;
@@ -39,8 +52,10 @@ public class ProductPage extends Page {
 	JTextField t_brand;
 	JTextField t_price;
 	JTextField t_discount;
-	JTextField t_color;
-	JTextField t_size;
+	JList t_color;
+	JList t_size;
+	JScrollPane scroll_color;
+	JScrollPane scroll_size;
 	JPanel p_preview; // 관리자가 선택한 상품 이미지를 미리보기 한다.(썸네일)
 	JTextArea t_introduce; // 상품 소개
 	JTextArea t_detail;
@@ -49,6 +64,10 @@ public class ProductPage extends Page {
 
 	TopCategoryDAO topCategoryDAO;
 	SubCategoryDAO subCategoryDAO;
+	ColorDAO colorDAO;
+	SizeDAO sizeDAO;
+	JFileChooser chooser;
+	Image[] imgArray; // 유저가 선택한 파일로부터 생성된 이미지 배열
 
 	public ProductPage(AppMain app) {
 		super(app);
@@ -72,17 +91,36 @@ public class ProductPage extends Page {
 		t_product_name = new JTextField();
 		t_brand = new JTextField();
 		t_price = new JTextField();
-		t_color = new JTextField();
-		t_size = new JTextField();
-		p_preview = new JPanel(); // 추후 익명 내부 클래스로 전환
+		t_color = new JList();
+		t_size = new JList();
+		scroll_color = new JScrollPane(t_color);
+		scroll_size = new JScrollPane(t_size);
+		p_preview = new JPanel() {
+			protected void paintComponent(Graphics g) {
+				super.paintComponent(g);
+
+				// 유저가 선택한 파일 수 만큼 반복하면서 이미지를 그려주자
+				if (imgArray != null) {
+					for (int i = 0; i < imgArray.length; i++) {
+						g.drawImage(imgArray[i], 5 + i * 50, 5, 45, 45, app);
+					}
+				}
+			}
+		}; // 추후 익명 내부 클래스로 전환
 		t_introduce = new JTextArea();
 		t_discount = new JTextField();
 		t_detail = new JTextArea();
 		bt_regist = new JButton("등록");
 		bt_list = new JButton("목록");
-		
+		colorDAO = new ColorDAO();
+		sizeDAO = new SizeDAO();
+
 		topCategoryDAO = new TopCategoryDAO();
 		subCategoryDAO = new SubCategoryDAO();
+		colorDAO = new ColorDAO();
+		sizeDAO = new SizeDAO();
+		chooser = new JFileChooser("C:\\lecture_workspace\\html_workspace\\images");
+		chooser.setMultiSelectionEnabled(true);
 
 		// 스타일
 		Dimension d = new Dimension(400, 30);
@@ -104,8 +142,8 @@ public class ProductPage extends Page {
 		t_brand.setPreferredSize(d);
 		t_price.setPreferredSize(d);
 		t_discount.setPreferredSize(d);
-		t_color.setPreferredSize(d);
-		t_size.setPreferredSize(d);
+		scroll_color.setPreferredSize(new Dimension(400, 80));
+		scroll_size.setPreferredSize(new Dimension(400, 80));
 		p_preview.setPreferredSize(new Dimension(400, 80)); // 이미지 미리보기 도화지..
 		t_introduce.setPreferredSize(new Dimension(400, 50)); // GPT를 연동한 소개글
 		t_detail.setPreferredSize(new Dimension(400, 60));
@@ -127,9 +165,9 @@ public class ProductPage extends Page {
 		add(la_discount);
 		add(t_discount);
 		add(la_color);
-		add(t_color);
+		add(scroll_color);
 		add(la_size);
-		add(t_size);
+		add(scroll_size);
 		add(bt_open);
 		add(p_preview);
 		add(la_introduce);
@@ -149,42 +187,82 @@ public class ProductPage extends Page {
 					// 내가 선택한 pk를 출력해보기
 					// e.getSource(); //이벤트를 일으킨 컴포넌트.. 즉 콤보박스
 					TopCategory topCategory = (TopCategory) cb_topcategory.getSelectedItem();
-					
-					//하위 카테고리 목록 가져오기
-					List<SubCategory> subList = subCategoryDAO.selectbyTop(topCategory);
-					
-					//모든 하위 카테고리 콤보아이템 지우기
-					cb_subcategory.removeAllItems();
-					
-					//서브 카테고리 수만큼 반복하면서, 두번째 콤보박스에 SubCategory 모델을 채워넣기
-					for(int i=0; i<subList.size();i++) {
-						SubCategory subCategory = subList.get(i);//i번째 요소 꺼내기
-						cb_subcategory.addItem(subCategory);
-					}
-					
-					
+
+					getSubCategory(topCategory);
 				}
 			}
 		});
 
 		// 최상위 카테고리 불러오기
 		getTopCategory();
+
+		getColorList();
+		getSizeList();
+
+		// 파일 탐색기 띄우기
+		bt_open.addActionListener(e -> {
+			chooser.showOpenDialog(ProductPage.this);
+
+			// 유저가 선택한 파일에 대한 정보 얻기
+			File[] files = chooser.getSelectedFiles();
+			imgArray = new Image[files.length];// 유저가 선택한 파일의 수에 맞게 이미지 배열 준비
+
+			// 파일은 파일일뿐, 이미지가 아니므로, 파일을 이용하여 이미지를 만들자
+			try {
+				for (int i = 0; i < files.length; i++) {
+					BufferedImage bufferImg = ImageIO.read(files[i]);
+					imgArray[i] = bufferImg.getScaledInstance(45, 45, Image.SCALE_SMOOTH);
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			// 그림 다시 그리기
+			p_preview.repaint();
+
+		});
 	}
-	
-	//DAO를 통해 얻어온 List를 이용하여 콤보박스 채우기
+
+	// DAO를 통해 얻어온 List를 이용하여 콤보박스 채우기
 	public void getTopCategory() {
 		List<TopCategory> topList = topCategoryDAO.selectAll();
-		
-		//안내 문구 역할을 수행할 dummy 모델을 콤보 박스에 넘ㅎ어주자
+
+		// 안내 문구 역할을 수행할 dummy 모델을 콤보 박스에 넘ㅎ어주자
 		TopCategory dummy = new TopCategory();
 		dummy.setTop_name("상위 카테고리를 선택하세요");
 		dummy.setTopcategory_id(0);
 		cb_topcategory.addItem(dummy);
-		
-		for(int i=0; i<topList.size(); i++) {
+
+		for (int i = 0; i < topList.size(); i++) {
 			TopCategory topCategory = topList.get(i);
 			cb_topcategory.addItem(topCategory);
 		}
+	}
+
+	public void getSubCategory(TopCategory topCategory) {
+		// 하위 카테고리 목록 가져오기
+		List<SubCategory> subList = subCategoryDAO.selectbyTop(topCategory);
+
+		// 모든 하위 카테고리 콤보아이템 지우기
+		cb_subcategory.removeAllItems();
+
+		SubCategory dummy = new SubCategory();
+		dummy.setSub_name("하위 카테고리를 선택하세요");
+		dummy.setSubCategory_id(0);
+		cb_subcategory.addItem(dummy);
+
+		// 서브 카테고리 수만큼 반복하면서, 두번째 콤보박스에 SubCategory 모델을 채워넣기
+		for (int i = 0; i < subList.size(); i++) {
+			SubCategory subCategory = subList.get(i);// i번째 요소 꺼내기
+			cb_subcategory.addItem(subCategory);
+		}
+	}
+
+	public void getColorList() {
+		t_color.setListData(new Vector(colorDAO.selectAll()));
+	}
+
+	public void getSizeList() {
+		t_size.setListData(new Vector(sizeDAO.selectAll()));
 	}
 
 }
