@@ -6,6 +6,8 @@ public class Config {
     public static final String id = "shop";
     public static final String password = "1234";
     
+    public static final String PRODUCT_IMAGE_PATH = "C:\\public";
+    
 	/*-------------------------------------
 	 각 페이지 정의
 	 --------------------------------------*/
