@@ -12,6 +12,9 @@ public class Test {
 			}
 		}
 	*/
+		String v1="a100";
+		String v2="100";
+		
 		String path="C://test/a/mario.test.jpg";
 		System.out.println(path.substring(path.lastIndexOf('.')+1));
 	}
