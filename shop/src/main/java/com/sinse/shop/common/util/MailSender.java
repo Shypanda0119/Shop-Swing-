@@ -21,8 +21,8 @@ import jakarta.mail.internet.MimeMessage;
 
 //이메일 보내주는 객체
 public class MailSender {
-	String account_user="kmkm7936@gmail.com"; //구글의 이메일 계정 
-	String app_pwd="vvhd wujv wofm dltm"; //내가 받은 앱비밀번호 
+	String account_user="내 구글 이메일 계정"; //구글의 이메일 계정 
+	String app_pwd="내가 받은 앱 비밀번호"; //내가 받은 앱비밀번호 
 	Session session;
 	
 	public MailSender() {
