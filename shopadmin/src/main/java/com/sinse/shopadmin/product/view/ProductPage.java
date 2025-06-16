@@ -8,6 +8,8 @@ import java.awt.event.ItemListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Vector;
 
@@ -24,6 +26,12 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import com.sinse.shopadmin.AppMain;
+import com.sinse.shopadmin.common.config.Config;
+import com.sinse.shopadmin.common.exception.ProductColorException;
+import com.sinse.shopadmin.common.exception.ProductException;
+import com.sinse.shopadmin.common.exception.ProductImgException;
+import com.sinse.shopadmin.common.exception.ProductSizeException;
+import com.sinse.shopadmin.common.util.DBManager;
 import com.sinse.shopadmin.product.model.Color;
 import com.sinse.shopadmin.product.model.Product;
 import com.sinse.shopadmin.product.model.ProductColor;
@@ -71,6 +79,8 @@ public class ProductPage extends Page {
 	JButton bt_regist; // 상품 등록
 	JButton bt_list; // 상품 목록
 
+	DBManager dbManager = DBManager.getInstance();
+
 	TopCategoryDAO topCategoryDAO;
 	SubCategoryDAO subCategoryDAO;
 	ColorDAO colorDAO;
@@ -79,12 +89,12 @@ public class ProductPage extends Page {
 	ProductColorDAO productColorDAO;
 	ProductSizeDAO productSizeDAO;
 	ProductImgDAO productImgDAO;
-	
+
 	JFileChooser chooser;
-	File[] files; //파일 복사 즉 업로드를 진행하려면, 이미자가 아닌 파일을 대상으로 할 수 있다..
-	
+	File[] files; // 파일 복사 즉 업로드를 진행하려면, 이미자가 아닌 파일을 대상으로 할 수 있다..
+
 	File[] newFiles;
-	
+
 	Image[] imgArray; // 유저가 선택한 파일로부터 생성된 이미지 배열
 
 	public ProductPage(AppMain app) {
@@ -141,7 +151,7 @@ public class ProductPage extends Page {
 		productColorDAO = new ProductColorDAO();
 		productSizeDAO = new ProductSizeDAO();
 		productImgDAO = new ProductImgDAO();
-		
+
 		chooser = new JFileChooser("C:\\lecture_workspace\\html_workspace\\images");
 		chooser.setMultiSelectionEnabled(true);
 
@@ -228,10 +238,14 @@ public class ProductPage extends Page {
 			if (result == JFileChooser.APPROVE_OPTION)
 				preview();
 		});
-		
-		//등록 버튼과 리스너 연결
-		bt_regist.addActionListener(e->{
+
+		// 등록 버튼과 리스너 연결
+		bt_regist.addActionListener(e -> {
 			regist();
+		});
+
+		bt_list.addActionListener(e -> {
+			app.showPage(Config.PRODUCT_LIST_PAGE);
 		});
 	}
 
@@ -300,98 +314,122 @@ public class ProductPage extends Page {
 	public void getSizeList() {
 		t_size.setListData(new Vector(sizeDAO.selectAll()));
 	}
-	
-	//시각적 효과를 위해 각, 이미지의 업로드 진행율을 보여주자, 새창으로..
+
+	// 시각적 효과를 위해 각, 이미지의 업로드 진행율을 보여주자, 새창으로..
 	public void upload() {
 		UploadDialog dialog = new UploadDialog(this);
 	}
-	
-	//mysql에 상품 등록 관련 쿼리 수행
+
+	// mysql에 상품 등록 관련 쿼리 수행
 	public void insert() {
-		//ProductDAO에게 일시키기!!
-		//Product 모델 인스턴스 1개를 만들어 안에다가 상품 등록폼의 데이터를 채워넣자!!(setter)
-		Product product = new Product();
-		
-		product.setSubCategory((SubCategory)cb_subcategory.getSelectedItem());
-		product.setProduct_name(t_product_name.getText());//상품명..
-		product.setBrand(t_brand.getText());
-		product.setDetail(t_detail.getText());
-		product.setDiscount(Integer.parseInt(t_discount.getText()));
-		product.setIntroduce(t_introduce.getText());
-		product.setPrice(Integer.parseInt(t_discount.getText()));
-		
-		int result = productDAO.insert(product);
-		
-		
-		int product_id = productDAO.selectRecentPk();
-		
-		//구해온 최신 pk를 Product에 반영
-		product.setProduct_id(product_id); 
-		
-		System.out.println(product_id);
-		
-		//상품에 딸려있는 색상들 등록하기
-		List<Color> colorList = t_color.getSelectedValuesList();
-		for(Color c : colorList) {
-			//productColor에 어떤 상품이, 어떤 색상을..
-			ProductColor productColor = new ProductColor();
-			productColor.setProduct(product);
-			productColor.setColor(c);
-			productColorDAO.insert(productColor);
-		}
-		
-		//상품에 딸려있는 사이즈를 등록
-		List<Size> sizeList = t_size.getSelectedValuesList();
-		for(Size s : sizeList) {
-			ProductSize productSize = new ProductSize(); //empty
-			productSize.setProduct(product);
-			productSize.setSize(s);
-			productSizeDAO.insert(productSize);
-		}
-		
-		//상품에 딸려있는 이미지 등록
-		for(int i=0; i<newFiles.length; i++) {
-			File file = newFiles[i];
-			ProductImg productImg = new ProductImg();
-			productImg.setProduct(product);
-			productImg.setFilename(file.getName());
-			productImgDAO.insert(productImg);
+		// 트랜잭션이 적용되려면, 4개의 DAO모두 같은 Connection 이어야 한다 Add commentMore actions
+		Connection con = dbManager.getConnection();
+
+		try {
+			con.setAutoCommit(false); // start transaction 명령 포함되어 잇으므로, 별도로 명시불필요
+			// 이 영역은 트랜잭션을 이루고 있는 업무들의 시도 영역..만일 이 영역에서 에러가 발생하면
+			// 실행부가 catch문으로 진입하기 때문에 해당 catch문에서 트랜잭션을 rollbackAdd commentMore actions
+			// ProductDAO 에게 일 시키기!!!
+			// Product 모델 인스턴스 1개를 만들어, 안에다가Add commentMore actions
+			// 상품 등록폼의 데이터를 채워넣자!!(setter)
+			Product product = new Product();
+
+			product.setSubCategory((SubCategory) cb_subcategory.getSelectedItem()); // fk값??
+			product.setProduct_name(t_product_name.getText()); // 상품명..
+			product.setBrand(t_brand.getText());
+			product.setPrice(Integer.parseInt(t_price.getText()));
+			product.setDiscount(Integer.parseInt(t_discount.getText()));
+			product.setIntroduce(t_introduce.getText());
+			product.setDetail(t_detail.getText());
+
+			productDAO.insert(product);
+
+			int product_id = productDAO.selectRecentPk();
+			product.setProduct_id(product_id);// 구해온 최신 pk를 Product에 반영
+			System.out.println("product_id " + product_id);
+
+			// 상품에 딸려있는 색상들 등록하기
+			List<Color> colorList = t_color.getSelectedValuesList();
+
+			for (Color color : colorList) {
+				// System.out.println(color.getColor_name());
+
+				// ProductColor 에 어떤 상품이, 어떤 색상을....
+				ProductColor productColor = new ProductColor();
+				productColor.setProduct(product); // 어떤 상품이?
+				productColor.setColor(color); // 어떤 색상을?
+				productColorDAO.insert(productColor);
+			}
+
+			// 상품에 딸려있는 사이즈를 등록
+			List<Size> sizeList = t_size.getSelectedValuesList();
+
+			for (Size size : sizeList) {
+				ProductSize productSize = new ProductSize(); // empty
+				productSize.setProduct(product); // 1) 어떤 상품에..
+				productSize.setSize(size); // 2) 어떤 사이즈를..
+				productSizeDAO.insert(productSize);
+			}
+
+			// 상품에 딸려있는 이미지 등록
+			for (int i = 0; i < newFiles.length; i++) {
+				File file = newFiles[i]; // 업로드된 파일 객체를 꺼내보자
+				ProductImg productImg = new ProductImg();
+				productImg.setProduct(product); // 1) 어떤 상품에..
+				productImg.setFilename(file.getName()); // 2) 어떤 파일명으로..
+				productImgDAO.insert(productImg);
+			}
+			con.commit(); // 에러가 없으니 확정짓자!!
+		} catch (ProductException | ProductColorException | ProductSizeException | ProductImgException e) {
+			JOptionPane.showMessageDialog(this, e.getMessage()); // 유저를 위해 에러원인을 알려주자
+			try {
+				con.rollback();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			}
+			e.printStackTrace();// 개발자를 위한 에러 로그
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				con.setAutoCommit(true);// 다시 되돌려 놓기
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
 		}
 	}
-	
-	
-	
-	//이미지가 업로드 및 DB insert
+
+	// 이미지가 업로드 및 DB insert
 	public void regist() {
-		//양식을 제대로 입력했을 때
-		
-		//상위카테고리 유효성 체크
-		if(cb_topcategory.getSelectedIndex()==0) {
+		// 양식을 제대로 입력했을 때
+
+		// 상위카테고리 유효성 체크
+		if (cb_topcategory.getSelectedIndex() == 0) {
 			JOptionPane.showMessageDialog(this, "상위 카테고리를 선택하셔야 합니다");
-		}else if(cb_subcategory.getSelectedIndex()==0) {
+		} else if (cb_subcategory.getSelectedIndex() == 0) {
 			JOptionPane.showMessageDialog(this, "하위 카테고리를 선택하셔야 합니다");
-		}else if(t_product_name.getText().length()<1) {
+		} else if (t_product_name.getText().length() < 1) {
 			JOptionPane.showMessageDialog(this, "상품명을 입력하세요");
-		}else if(t_brand.getText().length()<1) {
+		} else if (t_brand.getText().length() < 1) {
 			JOptionPane.showMessageDialog(this, "브랜드를 입력하세요");
-		}else if(t_price.getText().length()<1) {
+		} else if (t_price.getText().length() < 1) {
 			JOptionPane.showMessageDialog(this, "가격을 입력하세요");
-		}else if(t_discount.getText().length()<1) {
+		} else if (t_discount.getText().length() < 1) {
 			JOptionPane.showMessageDialog(this, "할인가를 입력하세요");
-		}else if(t_color.getMinSelectionIndex()<0 ) {
+		} else if (t_color.getMinSelectionIndex() < 0) {
 			JOptionPane.showMessageDialog(this, "1개 이상의 색상을 선택하세요");
-		}else if(t_size.getMinSelectionIndex()<0 ) {
+		} else if (t_size.getMinSelectionIndex() < 0) {
 			JOptionPane.showMessageDialog(this, "1개 이상의 사이즈를 선택하세요");
-		}else if(files.length<1 ) {
+		} else if (files.length < 1) {
 			JOptionPane.showMessageDialog(this, "상품 이미지를 선택하세요");
-		}else if(t_introduce.getText().length() <1) {
+		} else if (t_introduce.getText().length() < 1) {
 			JOptionPane.showMessageDialog(this, "상품 소개를 입력하세요");
-		}else if(t_detail.getText().length() <1) {
+		} else if (t_detail.getText().length() < 1) {
 			JOptionPane.showMessageDialog(this, "상세내용을 입력하세요");
-		}else {
-			upload();//업로드
-			
-			insert(); //mysqlAdd commentMore actions
+		} else {
+			upload();// 업로드
+
+			insert(); // mysqlAdd commentMore actions
 		}
 
 	}

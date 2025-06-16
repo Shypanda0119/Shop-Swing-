@@ -147,4 +147,20 @@ select max(test_id) from test;
 -- 그래서 세션으로 조회
 select LAST_INSERT_ID();
 
+create table member(
+	member_id int primary key auto_increment
+	, id varchar(20)
+	, pwd varchar(64)
+	, name varchar(20)
+	, email varchar(25)
+	, regdate timestamp default now()
+);
+
+
+select product_id, product_name, brand, price, discount, introduce, detail, s.subcategory_id, sub_name from product p inner join subcategory s  on p.subcategory_id = s.subcategory_id  order by product_id desc limit 6;
+
+-- product_size 테이블과 size 테이블을 조인하여 해당 상품의 사이즈를 출력
+select * from product_size p inner join size s on p.size_id = s.size_id and p.product_id=6;
+
+select * from product_color p inner join color c on p.color_id = c.color_id and p.product_id=6;
 

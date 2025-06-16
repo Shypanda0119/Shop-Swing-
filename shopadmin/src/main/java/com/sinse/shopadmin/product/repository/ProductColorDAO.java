@@ -4,38 +4,37 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import com.sinse.shopadmin.common.exception.ProductColorException;
 import com.sinse.shopadmin.common.util.DBManager;
 import com.sinse.shopadmin.product.model.ProductColor;
 
 public class ProductColorDAO {
 	DBManager dbManager = DBManager.getInstance();
 
-	//특정 상품에 딸려있는 색상들을 입력
-	public int insert(ProductColor productColor) {
+	// 특정 상품에 딸려있는 색상들을 입력
+	public void insert(ProductColor productColor) throws ProductColorException {
 		Connection conn = null;
 		PreparedStatement pstmt = null;
-		int result = 0;
-		
+
 		conn = dbManager.getConnection();
 		StringBuffer sql = new StringBuffer();
 		sql.append("insert into product_color(product_id, color_id) values(?, ?)");
-		
+
 		try {
-			pstmt=conn.prepareStatement(sql.toString());
+			pstmt = conn.prepareStatement(sql.toString());
 			pstmt.setInt(1, productColor.getProduct().getProduct_id());
 			pstmt.setInt(2, productColor.getColor().getColor_id());
-			result = pstmt.executeUpdate(); //DML 실행
-			
+
+			int result = pstmt.executeUpdate();// DML 실행
+
+			if (result < 1) {
+				throw new ProductColorException("상품의 색상이 등록되지 않았어요");
+			}
 		} catch (SQLException e) {
 			e.printStackTrace();
-		}finally {
+			throw new ProductColorException("상품의 색상 등록시 문제가 발생하였습니다", e);
+		} finally {
 			dbManager.release(pstmt);
 		}
-		
-		
-		
-		
-		
-		return result;
 	}
 }
