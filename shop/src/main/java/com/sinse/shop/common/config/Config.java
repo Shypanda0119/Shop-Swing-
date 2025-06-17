@@ -10,8 +10,8 @@ public class Config {
 	 각 페이지 정의
 	 --------------------------------------*/
 	public static final int MAIN_PAGE=0;
-	public static final int JOIN_PAGE=1;//회원가입Add commentMore actions
-	public static final int PRODUCT_PAGE=2; //상품 페이지
+	public static final int JOIN_PAGE=1;//회원가입	
+	public static final int PRODUCT_DETAIL_PAGE=2; //상품 페이지
 	public static final int CUSTOMER_PAGE=3;
 	public static final int LOGIN_PAGE=4;
 	public static final int CART_PAGE=5;

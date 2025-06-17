@@ -6,19 +6,27 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
+import com.sinse.shop.common.config.Config;
 import com.sinse.shop.common.util.StringUtil;
+import com.sinse.shop.home.MainPage;
 import com.sinse.shop.product.model.Product;
 
 public class ProductItem extends JPanel {
 	Product product;
 	Image img;
-	public ProductItem(Product product) {
+	MainPage mainPage; //현재 productItem을 생성한 주체 페이지이므로..
+	
+	public ProductItem(MainPage mainPage, Product product) {
+		this.mainPage = mainPage;
 		this.product = product;
 		try {
 			img = ImageIO.read(new File("C:/public/"+product.getFilenameList().get(0)));
@@ -27,6 +35,18 @@ public class ProductItem extends JPanel {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		//마우스 리스너 연결
+		addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent e) {
+				//어떤 상품을 선택했는지 그 정보를 보관
+				mainPage.product = product;
+				
+				//페이지 전환
+				mainPage.appMain.showPage(Config.PRODUCT_DETAIL_PAGE);
+			}
+		});
+		
 		setPreferredSize(new Dimension(220, 280));
 		setBackground(Color.yellow);
 	
